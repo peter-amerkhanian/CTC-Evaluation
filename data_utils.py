@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 import os
 
-def retrieve_pulse(week):
+def retrieve_pulse(week, verbose=True):
     """Get Census Pulse Data
     Args:
         week (int): Week number to load
@@ -18,12 +18,15 @@ def retrieve_pulse(week):
     zip_url = base_url + f'{year}/wk{week}/HPS_Week{week:02d}_PUF_CSV.zip'
     filename = f"data/pulse_{week}.csv"
     if not os.path.exists(filename):
-        print("Week: ", week)
-        print("Retrieving url: ", zip_url)
+        if verbose:
+            print("Week: ", week)
+            print("Retrieving url: ", zip_url)
         response = requests.get(zip_url)
-        print("Unzipping")
+        if verbose:
+            print("Unzipping")
         pulse_zip = zipfile.ZipFile(io.BytesIO(response.content))
-        print("Reading into Pandas")
+        if verbose:
+            print("Reading into Pandas")
         pulse_csv = pd.read_csv(pulse_zip.open(f'pulse{year}_puf_{week:02d}.csv'))
         dictionary_filename = f'pulse{year}_data.dictionary_CSV_{week:02d}.xlsx'
         if os.path.exists(dictionary_filename):
@@ -31,10 +34,12 @@ def retrieve_pulse(week):
             dictionary.to_excel(f'data/pulse{year}_data.dictionary_CSV_{week}.xlsx')
             del dictionary
         del pulse_zip
-        print("Saving")
+        if verbose:
+            print("Saving")
         pulse_csv.to_csv(filename)
     else:
-        print(f"Opening local file for pulse week{week}")
+        if verbose:
+            print(f"Opening local file for pulse week{week}")
         pulse_csv = pd.read_csv(filename)
     return pulse_csv
 
@@ -69,16 +74,19 @@ def filter_pulse(df, verbose=False):
 
 
 def basic_processing(df):
+    # Basic CTC Eligibility
     has_kids = df["THHLD_NUMKID"] > 0
     income_under_150k = (df['INCOME'] < 7)
+    # Retrieval question
     df["Received_CTC"] = (df['CTC_YN'] == 1).astype(int)
     # Key Vars
     df["Eligible"] = (has_kids & income_under_150k).astype(int)
     df['Post'] = ((df["WEEK"] > 33) & (df["WEEK"] < 40)).astype(int)
     df['Week'] = df["WEEK"].astype("category")
-    df['Treat'] = (df['POST'] * df["CTC_Eligible"])
+    df['Treat'] = (df['Post'] * df["Eligible"])
     # Outcomes / Controls
     df["Number_of_kids"] = df["THHLD_NUMKID"].astype(int)
+    df["Number_of_people"] = df["THHLD_NUMPER"].astype(int)
     df["Depressed_or_Anxious"] = ((df["DOWN"] >= 3) | (df["ANXIOUS"] >= 3)).astype(int)
     df["Depressed"] = ((df["DOWN"] >= 3)).astype(int)
     df["Anxious"] = ((df["ANXIOUS"] >= 3)).astype(int)
@@ -93,6 +101,8 @@ def basic_processing(df):
     df["Age"] = (2021 - df["TBIRTH_YEAR"]).astype(int)
     df["Received_EBT_card"] = (df["SCHLFDHLP2"] == 1).astype(int)
     df['Received_Free_Food'] = (df['FREEFOOD'] == 1).astype(int)
+    # Weights
+    df['Household_Weight'] = df['HWEIGHT'].astype(int)
     df_trimmed = df.iloc[:, -21:]
     return df_trimmed
 

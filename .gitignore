@@ -1,1 +1,5 @@
 data/**
+processed_data/**
+models/**
+.ipynb_checkpoints/
+__pycache__
