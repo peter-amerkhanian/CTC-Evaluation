@@ -73,17 +73,23 @@ def filter_pulse(df, verbose=False):
     return df
 
 
-def basic_processing(df):
+def basic_processing(df, trim=True):
     # Basic CTC Eligibility
     has_kids = df["THHLD_NUMKID"] > 0
     income_under_150k = (df['INCOME'] < 7)
-    # Retrieval question
-    df["Received_CTC"] = (df['CTC_YN'] == 1).astype(int)
-    # Key Vars
-    df["Eligible"] = (has_kids & income_under_150k).astype(int)
+    income_under_75k = (df['INCOME'] < 5)
+    income_under_100k = (df['INCOME'] < 6)
+    married_or_widowed = (df['MS'] == 1) | (df['MS'] == 2)
+    eligible = (has_kids & income_under_150k & married_or_widowed |
+    has_kids & income_under_75k
+    )
+    df["Eligible"] = (eligible).astype(int)
     df['Post'] = ((df["WEEK"] > 33) & (df["WEEK"] < 40)).astype(int)
-    df['Week'] = df["WEEK"].astype("category")
     df['Treat'] = (df['Post'] * df["Eligible"])
+    # Check
+    df["Received_CTC"] = (df['CTC_YN'] == 1).astype(int)
+    # Time
+    df['Week'] = df["WEEK"].astype("category")
     # Outcomes / Controls
     df["Number_of_kids"] = df["THHLD_NUMKID"].astype(int)
     df["Number_of_people"] = df["THHLD_NUMPER"].astype(int)
@@ -103,7 +109,10 @@ def basic_processing(df):
     df['Received_Free_Food'] = (df['FREEFOOD'] == 1).astype(int)
     # Weights
     df['Household_Weight'] = df['HWEIGHT'].astype(int)
-    df_trimmed = df.iloc[:, -21:]
-    return df_trimmed
+    if trim == True:
+        df_trimmed = df.iloc[:, -22:]
+        return df_trimmed
+    else:
+        return df
 
     
