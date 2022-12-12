@@ -3,5 +3,6 @@ processed_data/**
 models/**
 cps_data/**
 write_ups/**
+old_code/**
 .ipynb_checkpoints/
 __pycache__/
